@@ -85,6 +85,7 @@ $ terraforming
 Commands:
   terraforming alb             # ALB
   terraforming asg             # AutoScaling Group
+  terraforming cfd             # CloudFront Distribution
   terraforming cwa             # CloudWatch Alarm
   terraforming dbpg            # Database Parameter Group
   terraforming dbsg            # Database Security Group
