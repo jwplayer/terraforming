@@ -3,35 +3,16 @@ module Terraforming
     class SecurityGroup
       include Terraforming::Util
 
-      module Options
-        GROUP_IDS = 'group-ids'
+      def self.tf(client: Aws::EC2::Client.new)
+        self.new(client).tf
       end
 
-      AVAILABLE_OPTIONS = [
-          Options::GROUP_IDS,
-      ].freeze
-
-      def self.tf(options={})
-        opts = apply_defaults_to_options(options)
-        self
-            .new(opts[:client], opts)
-            .tf
+      def self.tfstate(client: Aws::EC2::Client.new)
+        self.new(client).tfstate
       end
 
-      def self.tfstate(options={})
-        opts = apply_defaults_to_options(options)
-        self.new(opts[:client], opts).tfstate
-      end
-
-      def self.apply_defaults_to_options(options)
-        options.dup.tap { |o|
-          o[:client] ||= Aws::EC2::Client.new
-        }
-      end
-
-      def initialize(client, options)
+      def initialize(client)
         @client = client
-        @group_ids = options[Options::GROUP_IDS]
       end
 
       def tf
@@ -178,12 +159,7 @@ module Terraforming
       end
 
       def security_groups
-        description = if @group_ids
-                        @client.describe_security_groups(group_ids: @group_ids)
-                      else
-                        @client.describe_security_groups
-                      end
-        description.map(&:security_groups).flatten
+        @client.describe_security_groups.map(&:security_groups).flatten
       end
 
       def security_groups_in(permission, security_group)

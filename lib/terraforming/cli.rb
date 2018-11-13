@@ -1,9 +1,5 @@
 module Terraforming
   class CLI < Thor
-    OPTIONS_AVAILABLE_TO_SUBCOMMANDS = [
-        Terraforming::Resource::SecurityGroup::AVAILABLE_OPTIONS,
-    ].reduce(:concat).freeze
-
     class_option :merge, type: :string, desc: "tfstate file to merge"
     class_option :overwrite, type: :boolean, desc: "Overwrite existing tfstate"
     class_option :tfstate, type: :boolean, desc: "Generate tfstate"
@@ -200,7 +196,6 @@ module Terraforming
     end
 
     desc "sg", "Security Group"
-    method_option :"group-ids", type: :array, desc: "Filter exported security groups by IDs"
     def sg
       execute(Terraforming::Resource::SecurityGroup, options)
     end
@@ -252,13 +247,7 @@ module Terraforming
 
     def execute(klass, options)
       configure_aws(options)
-
-      subcommand_options = options.select { |k, v| OPTIONS_AVAILABLE_TO_SUBCOMMANDS.include? k }
-      result = if options[:tfstate]
-                 tfstate(klass, options[:merge], subcommand_options)
-               else
-                 tf(klass, subcommand_options)
-               end
+      result = options[:tfstate] ? tfstate(klass, options[:merge]) : tf(klass)
 
       if options[:tfstate] && options[:merge] && options[:overwrite]
         open(options[:merge], "w+") do |f|
@@ -270,23 +259,14 @@ module Terraforming
       end
     end
 
-    def tf(klass, options={})
-      if options.empty?
-        klass.tf
-      else
-        klass.tf(options)
-      end
+    def tf(klass)
+      klass.tf
     end
 
-    def tfstate(klass, tfstate_path, options={})
+    def tfstate(klass, tfstate_path)
       tfstate = tfstate_path ? MultiJson.load(open(tfstate_path).read) : tfstate_skeleton
       tfstate["serial"] = tfstate["serial"] + 1
-      tfstate_addition = if options.empty?
-                           klass.tfstate
-                         else
-                           klass.tfstate(options)
-                         end
-      tfstate["modules"][0]["resources"] = tfstate["modules"][0]["resources"].merge(tfstate_addition)
+      tfstate["modules"][0]["resources"] = tfstate["modules"][0]["resources"].merge(klass.tfstate)
       MultiJson.encode(tfstate, pretty: true)
     end
 
